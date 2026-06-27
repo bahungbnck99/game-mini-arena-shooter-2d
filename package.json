@@ -1,0 +1,16 @@
+{
+  "name": "game-gun-2d",
+  "version": "1.0.0",
+  "description": "A 2D multiplayer shooter game with bots.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "cloudflared": "^0.7.1",
+    "express": "^4.19.2",
+    "localtunnel": "^2.0.2",
+    "tunnelmole": "^2.4.0",
+    "ws": "^8.17.0"
+  }
+}

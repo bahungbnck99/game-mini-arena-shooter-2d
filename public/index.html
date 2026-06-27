@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2D Arena Shooter - Realtime Multiplayer</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="grid-bg"></div>
+    <div class="radial-bg"></div>
+
+    <!-- SYSTEM CONTROLS (Top Right) -->
+    <div class="system-controls-container">
+        <!-- FULLSCREEN CONTROL -->
+        <button class="audio-mute-btn" id="fullscreenToggle">
+            <span id="fullscreenIcon">⛶</span>
+            <span id="fullscreenText">Toàn màn hình</span>
+        </button>
+
+        <!-- AUDIO CONTROL -->
+        <button class="audio-mute-btn" id="audioToggle">
+            <span id="audioIcon">🔊</span>
+            <span id="audioText">Bật âm thanh</span>
+        </button>
+
+        <!-- EXIT GAME CONTROL -->
+        <button class="audio-mute-btn hidden" id="exitGameBtn" style="border-color: var(--cyber-pink); color: var(--cyber-pink);">
+            <span>🚪</span>
+            <span>Thoát trận</span>
+        </button>
+    </div>
+
+    <!-- 1. MAIN MENU SCREEN -->
+    <div class="screen" id="mainMenuScreen">
+        <div class="menu-wrapper">
+            <h1 class="game-title">Arena Shooter 2D</h1>
+            
+            <div class="menu-container">
+            <!-- Left: Character Customization & Loadout -->
+            <div class="cyber-panel">
+                <h2 class="section-title">Trang bị & Nhân vật</h2>
+                
+                <div class="input-group">
+                    <label for="playerNameInput">Tên người chơi</label>
+                    <input type="text" id="playerNameInput" class="cyber-input" placeholder="Nhập tên..." maxlength="15">
+                </div>
+
+                <div class="tabs">
+                    <button class="tab-btn active" data-tab="tab-weapons">Súng</button>
+                    <button class="tab-btn" data-tab="tab-perks">Perks</button>
+                    <button class="tab-btn" data-tab="tab-skins">Trang phục</button>
+                    <button class="tab-btn" data-tab="tab-acc">Phụ kiện</button>
+                </div>
+
+                <!-- Tab: Weapons -->
+                <div class="tab-content" id="tab-weapons">
+                    <div class="loadout-grid">
+                        <div class="select-card selected" data-type="gunType" data-value="rifle">
+                            <div class="option-title">Rifle</div>
+                            <div class="option-desc">Cân bằng, dễ bắn</div>
+                        </div>
+                        <div class="select-card" data-type="gunType" data-value="smg">
+                            <div class="option-title">SMG</div>
+                            <div class="option-desc">Bắn rất nhanh, damg thấp</div>
+                        </div>
+                        <div class="select-card" data-type="gunType" data-value="pistol">
+                            <div class="option-title">Pistol</div>
+                            <div class="option-desc">Bắn chậm, cơ bản</div>
+                        </div>
+                        <div class="select-card" data-type="gunType" data-value="shotgun">
+                            <div class="option-title">Shotgun</div>
+                            <div class="option-desc">Cực mạnh tầm gần</div>
+                        </div>
+                        <div class="select-card" data-type="gunType" data-value="sniper">
+                            <div class="option-title">Sniper</div>
+                            <div class="option-desc">Một phát chí mạng, nạp chậm</div>
+                        </div>
+                    </div>
+                    
+                    <div class="weapon-stats">
+                        <div class="stat-row">
+                            <span>Sát thương</span>
+                            <div class="stat-bar"><div class="stat-fill" id="stat-damage" style="width: 50%;"></div></div>
+                        </div>
+                        <div class="stat-row">
+                            <span>Tốc độ bắn</span>
+                            <div class="stat-bar"><div class="stat-fill" id="stat-firerate" style="width: 60%;"></div></div>
+                        </div>
+                        <div class="stat-row">
+                            <span>Tốc độ đạn</span>
+                            <div class="stat-bar"><div class="stat-fill" id="stat-speed" style="width: 70%;"></div></div>
+                        </div>
+                        <div class="stat-row">
+                            <span>Băng đạn</span>
+                            <div class="stat-bar"><div class="stat-fill" id="stat-ammo" style="width: 80%;"></div></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab: Perks -->
+                <div class="tab-content hidden" id="tab-perks">
+                    <div class="loadout-grid">
+                        <div class="select-card selected" data-type="perk" data-value="none">
+                            <div class="option-title">Không bổ trợ</div>
+                            <div class="option-desc">Chơi hardcore</div>
+                        </div>
+                        <div class="select-card" data-type="perk" data-value="speed_boost">
+                            <div class="option-title">Tốc hành</div>
+                            <div class="option-desc">+20% tốc độ di chuyển</div>
+                        </div>
+                        <div class="select-card" data-type="perk" data-value="extra_health">
+                            <div class="option-title">Giáp dày</div>
+                            <div class="option-desc">+50 HP tối đa</div>
+                        </div>
+                        <div class="select-card" data-type="perk" data-value="faster_reload">
+                            <div class="option-title">Nạp đạn nhanh</div>
+                            <div class="option-desc">Giảm 50% thời gian thay đạn</div>
+                        </div>
+                        <div class="select-card" data-type="perk" data-value="bullet_damage_boost">
+                            <div class="option-title">Gia tăng lực</div>
+                            <div class="option-desc">+15% sát thương đạn</div>
+                        </div>
+                        <div class="select-card" data-type="perk" data-value="shield">
+                            <div class="option-title">Hồi giáp</div>
+                            <div class="option-desc">Tự hồi 30 Giáp sau 5s</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab: Skins -->
+                <div class="tab-content hidden" id="tab-skins">
+                    <div class="loadout-grid">
+                        <div class="select-card selected" data-type="skin" data-value="default">
+                            <div class="option-title" style="color: #66fcf1;">Default (Xanh)</div>
+                            <div class="option-desc">Màu chuẩn chiến binh</div>
+                        </div>
+                        <div class="select-card" data-type="skin" data-value="scout">
+                            <div class="option-title" style="color: #39ff14;">Scout (Lục)</div>
+                            <div class="option-desc">Lướt nhẹ như gió</div>
+                        </div>
+                        <div class="select-card" data-type="skin" data-value="heavy">
+                            <div class="option-title" style="color: #ff9f00;">Heavy (Cam)</div>
+                            <div class="option-desc">Rắn rỏi kiên cường</div>
+                        </div>
+                        <div class="select-card" data-type="skin" data-value="tactical">
+                            <div class="option-title" style="color: #a0a0a0;">Tactical (Xám)</div>
+                            <div class="option-desc">Phong cách đặc nhiệm</div>
+                        </div>
+                        <div class="select-card" data-type="skin" data-value="neon">
+                            <div class="option-title" style="color: #ff007f;">Neon (Hồng)</div>
+                            <div class="option-desc">Sáng rực võ đài</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab: Accessories -->
+                <div class="tab-content hidden" id="tab-acc">
+                    <div class="loadout-grid">
+                        <div class="select-card selected" data-type="accessory" data-value="none">
+                            <div class="option-title">Không phụ kiện</div>
+                            <div class="option-desc">Gọn gàng</div>
+                        </div>
+                        <div class="select-card" data-type="accessory" data-value="helmet">
+                            <div class="option-title">Helmet</div>
+                            <div class="option-desc">Mũ bảo hộ thép</div>
+                        </div>
+                        <div class="select-card" data-type="accessory" data-value="backpack">
+                            <div class="option-title">Backpack</div>
+                            <div class="option-desc">Balo dã chiến sau lưng</div>
+                        </div>
+                        <div class="select-card" data-type="accessory" data-value="visor">
+                            <div class="option-title">Visor</div>
+                            <div class="option-desc">Kính quét hồng ngoại</div>
+                        </div>
+                        <div class="select-card" data-type="accessory" data-value="shoulder_pad">
+                            <div class="option-title">Shoulder Pad</div>
+                            <div class="option-desc">Tấm bảo vệ vai</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right: Play, Rooms, Create -->
+            <div class="cyber-panel" style="display: flex; flex-direction: column; justify-content: space-between;">
+                <div>
+                    <h2 class="section-title">Phòng Chờ Trực Tuyến</h2>
+                    <div class="room-list-container" id="roomListContainer">
+                        <!-- Rooms injected by JS -->
+                        <div class="no-rooms">Không có phòng chờ nào. Tạo phòng để bắt đầu!</div>
+                    </div>
+                </div>
+
+                <div>
+                    <div class="input-group">
+                        <label for="roomCodeInput">Nhập mã phòng</label>
+                        <input type="text" id="roomCodeInput" class="cyber-input" style="text-transform: uppercase;" placeholder="Mã 4 ký tự..." maxlength="4">
+                    </div>
+                    
+                    <button class="cyber-btn" id="joinRoomBtn">Vào phòng</button>
+
+                    <div id="roomConfigArea">
+                        <div class="input-group">
+                            <label>Chế độ chơi (Tạo phòng)</label>
+                            <select id="gameModeSelect" class="cyber-input" style="background: #10121e;">
+                                <option value="vs_bot">Người vs Bot (Solo)</option>
+                                <option value="coop">Người + Bot phe ta vs Bot địch</option>
+                                <option value="pvp">Người vs Người (FFA)</option>
+                                <option value="team">Team Battle (Xanh vs Đỏ)</option>
+                            </select>
+                        </div>
+                        <div class="input-group">
+                            <label>Độ khó của Bot</label>
+                            <select id="botDifficultySelect" class="cyber-input" style="background: #10121e;">
+                                <option value="easy">Dễ</option>
+                                <option value="medium" selected>Vừa</option>
+                                <option value="hard">Khó</option>
+                            </select>
+                        </div>
+                        <div class="input-group">
+                            <label>Thời gian trận đấu</label>
+                            <select id="matchDurationSelect" class="cyber-input" style="background: #10121e;">
+                                <option value="60">1 Phút (Nhanh)</option>
+                                <option value="120" selected>2 Phút (Chuẩn)</option>
+                                <option value="180">3 Phút</option>
+                                <option value="300">5 Phút</option>
+                            </select>
+                        </div>
+                        <div class="input-group" id="botCountInputGroup">
+                            <label for="botCountInput">Số lượng Bot địch (N)</label>
+                            <input type="number" id="botCountInput" class="cyber-input" value="4" min="1" max="10">
+                            <div id="botCountHelperText" style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 4px;">
+                                Phe địch sẽ có 4 Bot đối thủ.
+                            </div>
+                        </div>
+                        <div class="input-group" id="maxPlayersInputGroup">
+                            <label>Số người chơi tối đa (Phòng)</label>
+                            <select id="maxPlayersSelect" class="cyber-input" style="background: #10121e;">
+                                <option value="2">2 Người chơi</option>
+                                <option value="4" selected>4 Người chơi</option>
+                                <option value="6">6 Người chơi</option>
+                                <option value="8">8 Người chơi</option>
+                            </select>
+                        </div>
+                        <button class="cyber-btn pink" id="createRoomBtn">Tạo phòng mới</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+    <!-- 2. ROOM LOBBY SCREEN -->
+    <div class="screen hidden" id="roomLobbyScreen">
+        <div class="lobby-wrapper">
+            <div class="cyber-panel" style="width: 100%;">
+                <div class="lobby-header">
+                <div>
+                    <h2>PHÒNG CHỜ TRẬN ĐẤU</h2>
+                    <div id="lobbyRoomInfoText" style="color: var(--text-secondary); margin-top: 4px; font-size: 0.9rem;">
+                        Chế độ: Người vs Bot | Khó: Vừa
+                    </div>
+                </div>
+                <div class="room-code-badge" id="lobbyRoomCodeDisplay">----</div>
+            </div>
+
+            <div class="lobby-layout">
+                <!-- Players in Room -->
+                <div>
+                    <h3 class="section-title">Danh sách người chơi</h3>
+                    <div class="lobby-players-box" id="lobbyPlayersList">
+                        <!-- Injected by JS -->
+                    </div>
+                </div>
+
+                <!-- Match config / start -->
+                <div style="display: flex; flex-direction: column; justify-content: space-between;">
+                    <div>
+                        <h3 class="section-title">Luật trận đấu</h3>
+                        <p style="color: var(--text-secondary); font-size: 0.9rem; line-height: 1.5;">
+                            • Sử dụng WASD để di chuyển trong đấu trường.<br>
+                            • Ngắm bắn bằng chuột. Nạp đạn bằng phím R.<br>
+                            • Phím Space để lướt nhanh (Dash) né đạn.<br>
+                            • Người chơi bị hạ gục sẽ tự động hồi sinh sau 3 giây.<br>
+                        </p>
+                    </div>
+
+                    <div id="lobbyTeamSelectArea" style="margin-top: 20px; display: none;">
+                        <label style="display: block; font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px;">Chọn phe chiến đấu</label>
+                        <div style="display: flex; gap: 10px;">
+                            <button class="cyber-btn" id="lobbySelectBlueBtn" style="flex: 1; padding: 8px 12px; font-size: 0.85rem;">Phe Xanh</button>
+                            <button class="cyber-btn" id="lobbySelectRedBtn" style="flex: 1; padding: 8px 12px; font-size: 0.85rem;">Phe Đỏ</button>
+                        </div>
+                    </div>
+
+                    <div style="margin-top: 20px;">
+                        <div id="lobbyWaitWarning" style="color: var(--cyber-yellow); font-size: 0.85rem; font-weight: bold; margin-bottom: 12px; display: none; text-align: center; text-shadow: 0 0 8px rgba(255, 189, 3, 0.3);">
+                            Đang đợi thêm người chơi tham gia (tối thiểu 2 người)...
+                        </div>
+                        <button class="cyber-btn" id="lobbyStartBtn" style="margin-bottom: 12px; display: none;">Bắt đầu trận đấu</button>
+                        <button class="cyber-btn pink" id="lobbyLeaveBtn">Rời phòng</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+</div>
+
+    <!-- 3. GAME SCREEN -->
+    <div class="screen hidden" id="gameScreen">
+        <!-- Main canvas -->
+        <canvas id="gameCanvas"></canvas>
+
+        <!-- Touch Controls Overlay (visible on mobile / touch screen devices) -->
+        <div id="touchControlsOverlay" style="display: none;">
+            <!-- Left Side: Movement Joystick -->
+            <div class="joystick-container" id="moveJoystickContainer">
+                <div class="joystick-ring"></div>
+                <div class="joystick-knob" id="moveJoystickKnob"></div>
+            </div>
+
+            <!-- Right Side: Action buttons & Aim Joystick -->
+            <div class="right-touch-container">
+                <!-- Reload & Dash Buttons -->
+                <button class="touch-action-btn reload" id="touchReloadBtn">R</button>
+                <button class="touch-action-btn dash" id="touchDashBtn">⚡</button>
+
+                <!-- Aim/Shoot Joystick -->
+                <div class="joystick-container" id="aimJoystickContainer">
+                    <div class="joystick-ring aim-ring"></div>
+                    <div class="joystick-knob aim-knob" id="aimJoystickKnob"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- HUD: HP & Shield (Bottom Left) -->
+        <div class="hud-panel" id="hudPlayerStats">
+            <div class="hud-stat-bar-container">
+                <div class="hud-stat-label">
+                    <span>Máu (HP)</span>
+                    <span id="hudHpText">100/100</span>
+                </div>
+                <div class="hud-hp-bar">
+                    <div class="hud-hp-fill" id="hudHpFill" style="width: 100%;"></div>
+                </div>
+            </div>
+            <div class="hud-stat-bar-container" id="hudShieldContainer" style="display: none;">
+                <div class="hud-stat-label">
+                    <span>Giáp (Shield)</span>
+                    <span id="hudShieldText">30/30</span>
+                </div>
+                <div class="hud-shield-bar">
+                    <div class="hud-shield-fill" id="hudShieldFill" style="width: 100%;"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- HUD: Weapon, Ammo, Dash (Bottom Right) -->
+        <div class="hud-panel" id="hudWeaponStats">
+            <div class="hud-weapon-name" id="hudWeaponName">Rifle</div>
+            <div class="hud-ammo">
+                <span id="hudAmmoCurrent">25</span><span class="hud-ammo-max">/<span id="hudAmmoMax">25</span></span>
+            </div>
+            <div class="hud-dash-indicator" id="hudDashIndicator">Dash sẵn sàng</div>
+        </div>
+
+        <!-- HUD: Room info (Top Left) -->
+        <div class="hud-panel" id="hudRoomInfo">
+            <div class="hud-room-code">Phòng: <span id="hudRoomCodeDisplay">ABCD</span></div>
+            <div class="hud-room-mode" id="hudRoomModeDisplay">Người vs Bot | Vừa</div>
+            <div id="hudLatencyDisplay" style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 4px;">FPS: 60 | Ping: --ms</div>
+        </div>
+
+        <!-- HUD: Scoreboard (Top Right) -->
+        <div class="hud-panel" id="hudLeaderboard">
+            <div class="leaderboard-title">BẢNG ĐIỂM</div>
+            <div class="leaderboard-list" id="leaderboardList">
+                <!-- Injected by JS -->
+            </div>
+        </div>
+
+        <!-- HUD: Killfeed (Top Center) -->
+        <div class="hud-panel" id="hudKillfeed">
+            <!-- Injected by JS -->
+        </div>
+
+        <!-- Death Overlay Screen -->
+        <div id="hudDeathOverlay" class="hidden">
+            <div class="death-title">BẠN ĐÃ BỊ HẠ GỤC</div>
+            <div class="death-killer" id="deathKillerText">Bởi Bot_Red_1</div>
+            <div class="respawn-timer">Hồi sinh sau <span id="respawnTimerCount">3</span> giây...</div>
+        </div>
+        <!-- HUD: Match Timer (Top Center) -->
+        <div class="hud-panel" id="hudTimer" style="top: 25px; left: 50%; transform: translateX(-50%); font-size: 2.2rem; font-weight: 800; color: var(--cyber-cyan); text-shadow: var(--glow-cyan); pointer-events: none;">02:00</div>
+
+        <!-- Game Over Screen Overlay -->
+        <div id="hudGameOverOverlay" class="hidden" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(8, 9, 15, 0.95); backdrop-filter: blur(10px); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 40; pointer-events: auto; overflow-y: auto; padding: 20px 0;">
+            <h2 id="goResultTitle" style="font-size: 4rem; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 5px;">CHIẾN THẮNG</h2>
+            <div id="goScoreDetail" style="font-size: 1.4rem; color: var(--text-secondary); margin-bottom: 20px;">Xanh (Blue) 25 - 20 Đỏ (Red)</div>
+            
+            <!-- MVP Section -->
+            <div id="goMvpContainer" style="display: flex; gap: 20px; margin-bottom: 20px; justify-content: center; width: 680px; max-width: 95%;">
+                <!-- Injected by JS -->
+            </div>
+
+            <!-- Two-team Scoreboard Section -->
+            <div id="goTeamsScoreboard" style="display: flex; gap: 20px; width: 680px; max-width: 95%; margin-bottom: 25px;">
+                <!-- Blue Team Panel -->
+                <div class="cyber-panel" style="flex: 1; background: rgba(0, 204, 255, 0.05); border-color: rgba(0, 204, 255, 0.2); padding: 12px 18px;">
+                    <h3 class="section-title" style="color: var(--cyber-cyan); border-bottom: 1px solid rgba(0,204,255,0.2); padding-bottom: 6px; margin-bottom: 10px; font-size: 1.1rem;">PHE XANH (BLUE)</h3>
+                    <div id="goBlueTeamList" style="font-size: 0.85rem; line-height: 1.8;">
+                        <!-- Injected by JS -->
+                    </div>
+                </div>
+                <!-- Red Team Panel -->
+                <div class="cyber-panel" style="flex: 1; background: rgba(255, 51, 102, 0.05); border-color: rgba(255, 51, 102, 0.2); padding: 12px 18px;">
+                    <h3 class="section-title" style="color: var(--cyber-pink); border-bottom: 1px solid rgba(255,51,102,0.2); padding-bottom: 6px; margin-bottom: 10px; font-size: 1.1rem;">PHE ĐỎ (RED)</h3>
+                    <div id="goRedTeamList" style="font-size: 0.85rem; line-height: 1.8;">
+                        <!-- Injected by JS -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Single Leaderboard Section (For PvP FFA / Solo) -->
+            <div class="cyber-panel" id="goSingleScoreboard" style="width: 500px; max-width: 90%; margin-bottom: 25px; background: rgba(16, 18, 30, 0.85); display: none; padding: 12px 18px;">
+                <h3 class="section-title" style="text-align: center; color: var(--cyber-yellow); margin-bottom: 15px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 6px; font-size: 1.1rem;">BẢNG XẾP HẠNG CHUNG CUỘC</h3>
+                <div id="goLeaderboard" style="font-size: 0.95rem; line-height: 1.8;">
+                    <!-- Injected by JS -->
+                </div>
+            </div>
+
+            <button class="cyber-btn pink" id="goBackBtn" style="width: 200px;">Quay lại Menu</button>
+        </div>
+
+        <!-- Instructions Overlay -->
+        <div class="ingame-instructions">
+            Di chuyển: <span>WASD</span> | Ngắm: <span>Chuột</span> | Bắn: <span>Chuột trái</span> | Lướt: <span>Space</span> | Nạp đạn: <span>R</span>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/audio.js"></script>
+    <script src="js/game.js"></script>
+</body>
+</html>

@@ -1,0 +1,15 @@
+# Node.js Dependencies
+node_modules/
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# Agent custom configs and project memory files
+.agents/
+.ai/
+AGENTS.md
+
+# Log files and system generated cache
+*.log
+.system_generated/
