@@ -1399,144 +1399,215 @@ function drawBullet(bullet) {
 }
 
 // Draw players and bots
+// Draw players and bots as highly-polished cyberpunk humanoid sprites
 function drawEntity(entity) {
     if (entity.hp <= 0) return; // Hide dead bodies
 
     ctx.save();
     ctx.translate(entity.x, entity.y);
+    ctx.rotate(entity.angle); // Rotate whole coordinate system to point towards weapon angle
 
     const isMe = entity.id === myId;
     
-    // Define skin color
+    // Define skin / primary styling color
     let mainColor = SKIN_COLORS[entity.skin] || '#fff';
     if (latestGameState.gameMode === 'team' || latestGameState.gameMode === 'coop') {
         mainColor = TEAM_COLORS[entity.team] || mainColor;
     }
 
-    // 1. Draw accessories (Backpack) - drawn behind player body
+    // A. Draw Feet (Humanoid Walking leg swing animation)
+    const walkSpeed = 0.015;
+    const walkCycle = Math.sin(Date.now() * walkSpeed) * 6; // Leg swing offset
+    
+    ctx.fillStyle = '#0a0b12';
+    ctx.strokeStyle = '#5f6583';
+    ctx.lineWidth = 1.5;
+    
+    // Left foot
+    ctx.beginPath();
+    ctx.arc(-4 + walkCycle, -9, 4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    // Right foot
+    ctx.beginPath();
+    ctx.arc(-4 - walkCycle, 9, 4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    // B. Draw Backpack Accessory (drawn behind body)
     if (entity.accessory === 'backpack') {
         ctx.fillStyle = '#1c1f35';
         ctx.strokeStyle = mainColor;
-        ctx.lineWidth = 1;
-        ctx.save();
-        ctx.rotate(entity.angle);
-        // Draw backpack behind (opposite of aiming angle)
-        ctx.fillRect(-28, -8, 8, 16);
-        ctx.strokeRect(-28, -8, 8, 16);
-        ctx.restore();
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.roundRect(-16, -8, 6, 16, 2);
+        ctx.fill();
+        ctx.stroke();
     }
 
-    // 2. Draw gun (pointing towards aim angle)
+    // C. Draw Arms & Hands (Humanoid arm pose holding weapon)
+    ctx.fillStyle = '#16192b';
+    ctx.strokeStyle = '#474c67';
+    ctx.lineWidth = 3.5;
+
+    const isLongGun = ['rifle', 'shotgun', 'sniper'].includes(entity.gunType);
+
+    if (isLongGun) {
+        // Two-handed gun hold pose
+        // Left arm stretching forward
+        ctx.beginPath();
+        ctx.moveTo(0, -11);
+        ctx.lineTo(10, -7);
+        ctx.stroke();
+
+        // Right arm holding trigger
+        ctx.beginPath();
+        ctx.moveTo(0, 11);
+        ctx.lineTo(14, 5);
+        ctx.stroke();
+
+        // Hands (flesh / skin color)
+        ctx.fillStyle = '#f3a38c';
+        ctx.strokeStyle = mainColor;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.arc(10, -7, 3, 0, Math.PI * 2);
+        ctx.arc(14, 5, 3, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+    } else {
+        // One-handed or compact SMG hold pose
+        // Right arm pointing straight forward
+        ctx.beginPath();
+        ctx.moveTo(0, 11);
+        ctx.lineTo(14, 4);
+        ctx.stroke();
+
+        // Left arm in defensive pose
+        ctx.beginPath();
+        ctx.moveTo(0, -11);
+        ctx.lineTo(3, -7);
+        ctx.stroke();
+
+        // Hands
+        ctx.fillStyle = '#f3a38c';
+        ctx.strokeStyle = mainColor;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.arc(14, 4, 3, 0, Math.PI * 2);
+        ctx.arc(3, -7, 3, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+    }
+
+    // D. Draw Gun (pointing forward, overlaying arms)
     ctx.save();
-    ctx.rotate(entity.angle);
     ctx.fillStyle = '#1c1f35';
     ctx.strokeStyle = '#5f6583';
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 1.5;
 
     switch (entity.gunType) {
         case 'pistol':
-            ctx.fillRect(10, 2, 12, 4); // Barrel
-            ctx.strokeRect(10, 2, 12, 4);
+            ctx.fillRect(8, 1, 10, 3.5);
+            ctx.strokeRect(8, 1, 10, 3.5);
             break;
         case 'smg':
-            ctx.fillRect(8, 2, 16, 6);
-            ctx.strokeRect(8, 2, 16, 6);
-            ctx.fillStyle = '#3a3f58'; // Magazine clip
-            ctx.fillRect(15, 8, 3, 8);
+            ctx.fillRect(7, 1, 15, 5);
+            ctx.strokeRect(7, 1, 15, 5);
+            ctx.fillStyle = '#3a3f58';
+            ctx.fillRect(13, 6, 2.5, 6); // Magazine
             break;
         case 'rifle':
-            ctx.fillRect(6, 2, 24, 7);
-            ctx.strokeRect(6, 2, 24, 7);
+            ctx.fillRect(5, 1, 23, 6);
+            ctx.strokeRect(5, 1, 23, 6);
             break;
         case 'shotgun':
-            ctx.fillRect(8, 0, 18, 9);
-            ctx.strokeRect(8, 0, 18, 9);
+            ctx.fillRect(7, -1, 17, 8);
+            ctx.strokeRect(7, -1, 17, 8);
             break;
         case 'sniper':
-            ctx.fillRect(4, 2, 32, 5); // long barrel
-            ctx.strokeRect(4, 2, 32, 5);
+            ctx.fillRect(3, 1.5, 31, 4.5);
+            ctx.strokeRect(3, 1.5, 31, 4.5);
             // Scope
             ctx.fillStyle = '#474c67';
             ctx.beginPath();
-            ctx.arc(18, 0, 4, 0, Math.PI * 2);
+            ctx.arc(16, -1, 3.5, 0, Math.PI * 2);
             ctx.fill();
             ctx.stroke();
             break;
     }
     ctx.restore();
 
-    // 3. Draw main player body (Circle)
-    ctx.fillStyle = '#0b0c10';
+    // E. Draw Torso (Cyber armor panel)
+    ctx.fillStyle = '#16192b';
     ctx.strokeStyle = mainColor;
-    ctx.lineWidth = 3;
+    ctx.lineWidth = 2.5;
     ctx.shadowColor = mainColor;
-    ctx.shadowBlur = isMe ? 12 : 4; // Glow more if it's me
+    ctx.shadowBlur = isMe ? 8 : 2;
 
     ctx.beginPath();
-    ctx.arc(0, 0, 18, 0, Math.PI * 2);
+    ctx.roundRect(-8, -11, 16, 22, 4); // Vai rộng hông thon dạng người
     ctx.fill();
     ctx.stroke();
-    
-    ctx.shadowBlur = 0; // reset
+    ctx.shadowBlur = 0;
 
-    // Draw inner design detailing
-    ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+    // Glowing core indicator on chest
+    ctx.strokeStyle = mainColor;
     ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.arc(0, 0, 10, 0, Math.PI * 2);
+    ctx.moveTo(-3, -3);
+    ctx.lineTo(1, 0);
+    ctx.lineTo(-3, 3);
     ctx.stroke();
 
-    // 4. Draw accessories (Helmet, Visor, Shoulder Pads)
+    // F. Draw Head
+    ctx.fillStyle = '#0b0c10';
+    ctx.strokeStyle = mainColor;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(0, 0, 8, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    // G. Accessories (Helmet, Visor, Shoulder Pads)
     if (entity.accessory === 'helmet') {
-        ctx.strokeStyle = mainColor;
-        ctx.lineWidth = 3;
+        ctx.fillStyle = mainColor;
         ctx.beginPath();
-        // Helmet curve on top (facing gun direction)
-        ctx.arc(0, 0, 19, entity.angle - Math.PI/2, entity.angle + Math.PI/2);
-        ctx.stroke();
+        ctx.arc(0, 0, 8.5, -Math.PI/2, Math.PI/2);
+        ctx.fill();
     }
 
     if (entity.accessory === 'visor') {
-        ctx.strokeStyle = '#ffea00'; // visor lens glow
-        ctx.lineWidth = 3;
-        ctx.save();
-        ctx.rotate(entity.angle);
+        ctx.strokeStyle = '#ffea00'; // Yellow glowing visor lens
+        ctx.lineWidth = 2.5;
         ctx.beginPath();
-        // Front arc
-        ctx.arc(0, 0, 18.5, -0.4, 0.4);
+        ctx.arc(0, 0, 8.5, -0.4, 0.4);
         ctx.stroke();
-        ctx.restore();
     }
 
     if (entity.accessory === 'shoulder_pad') {
-        ctx.fillStyle = '#2a2e45';
+        ctx.fillStyle = '#16192b';
         ctx.strokeStyle = mainColor;
         ctx.lineWidth = 1.5;
-        
-        ctx.save();
-        ctx.rotate(entity.angle);
-        // Draw pads on side shoulders (orthogonal to angle)
         ctx.beginPath();
-        ctx.arc(0, -18, 4, 0, Math.PI*2);
-        ctx.arc(0, 18, 4, 0, Math.PI*2);
+        ctx.arc(0, -11, 4, 0, Math.PI * 2); // Left shoulder plate
+        ctx.arc(0, 11, 4, 0, Math.PI * 2);  // Right shoulder plate
         ctx.fill();
         ctx.stroke();
-        ctx.restore();
     }
 
-    ctx.restore(); // Restore coordinates translation
+    ctx.restore(); // Restore translation
 
-    // 5. Draw labels (Name, HP, Reload bar) - drawn above character, not affected by rotation
-    // Draw Name
+    // H. Draw HUD Text & Bars above the player
     ctx.fillStyle = '#ffffff';
-    ctx.font = '11px Outfit, sans-serif';
+    ctx.font = '11px Orbitron, sans-serif';
     ctx.textAlign = 'center';
     
     let label = entity.name;
     if (entity.isBot) label += ` [BOT]`;
     ctx.fillText(label, entity.x, entity.y - 36);
 
-    // Draw HP bar
     const barWidth = 36;
     const barHeight = 4;
     const barX = entity.x - barWidth / 2;
@@ -1551,14 +1622,14 @@ function drawEntity(entity) {
     ctx.fillStyle = entity.team === 'red' ? '#ff3366' : entity.team === 'blue' ? '#00f0ff' : '#39ff14';
     ctx.fillRect(barX, barY, barWidth * hpRatio, barHeight);
 
-    // Shield Fill (thin line on top if shield exists)
+    // Shield Fill
     if (entity.maxShield > 0 && entity.shield > 0) {
         const shieldRatio = entity.shield / entity.maxShield;
         ctx.fillStyle = '#00a2ff';
         ctx.fillRect(barX, barY - 2, barWidth * shieldRatio, 1.5);
     }
 
-    // Draw Reloading Progress
+    // Reloading indicator
     if (entity.isReloading) {
         ctx.fillStyle = 'rgba(255, 234, 0, 0.8)';
         ctx.fillRect(barX, barY + 5, barWidth * entity.reloadProgress, 2);

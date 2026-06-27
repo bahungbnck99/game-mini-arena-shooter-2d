@@ -169,13 +169,16 @@ Create and implement the following files exactly:
   - In the event listeners for continuous actions (`mousemove` and touch joysticks `touchmove`), update `inputState` local variables (e.g., `inputState.mouseAngle`, movement states) but **DO NOT** call `syncInput()`.
   - In event listeners for trigger events (`keydown`, `keyup`, `mousedown`, `mouseup`, `touchstart` for dash/reload), call `syncInput()` **immediately** to ensure zero delay.
   - Within `drawLoop()`, call `syncInput()` periodically every **`30ms`** (using a timestamps check `now - lastInputSentTime >= 30`) to keep the server updated regularly without flooding the WebSocket connection.
-- **Draw Canvas Entities**:
-  - Render player circles with accessory indicators rotating according to `entity.angle`:
-    - helmet: front arc border.
-    - visor: yellow glowing visor line.
-    - shoulder_pad: two orthogonal side shoulder pads.
-    - backpack: rectangle on the back opposite to the aiming angle.
-  - Render detailed guns with specific barrel lengths/clips.
+- **Draw Canvas Humanoid Sprites**:
+  - Draw swinging feet for players and bots based on moving state using `Math.sin(Date.now() * speed) * amplitude`.
+  - Draw two-handed arms/hands pose for long weapons (rifle, shotgun, sniper) and one-handed hold for compact weapons (pistol, smg).
+  - Draw a humanoid torso rounded rect armor core and head circle aligned with the aiming angle.
+  - Apply chosen accessories:
+    - helmet: half-arc cap on head.
+    - visor: yellow neon arc line.
+    - shoulder_pad: dual circular shoulder pads.
+    - backpack: rect backpack behind torso.
+  - Render detailed guns with specific barrel lengths/clips overlaid correctly on hands.
 - **Minimap Rendering (`drawMinimap`)**:
   - Position the mini-map at the bottom left.
   - Render static obstacle blocks and players/bots as glowing dots.
@@ -358,4 +361,244 @@ class AudioSystem {
     }
 }
 window.audioSystem = new AudioSystem();
+```
+
+### In `public/js/game.js` (Humanoid drawing logic)
+```javascript
+// Draw players and bots as highly-polished cyberpunk humanoid sprites
+function drawEntity(entity) {
+    if (entity.hp <= 0) return; // Hide dead bodies
+
+    ctx.save();
+    ctx.translate(entity.x, entity.y);
+    ctx.rotate(entity.angle); // Rotate coordinates system to weapon angle
+
+    const isMe = entity.id === myId;
+    
+    // Define skin / primary styling color
+    let mainColor = SKIN_COLORS[entity.skin] || '#fff';
+    if (latestGameState.gameMode === 'team' || latestGameState.gameMode === 'coop') {
+        mainColor = TEAM_COLORS[entity.team] || mainColor;
+    }
+
+    // A. Draw Feet (Humanoid leg swing walking animation)
+    const walkSpeed = 0.015;
+    const walkCycle = Math.sin(Date.now() * walkSpeed) * 6; // Leg swing offset
+    
+    ctx.fillStyle = '#0a0b12';
+    ctx.strokeStyle = '#5f6583';
+    ctx.lineWidth = 1.5;
+    
+    // Left foot
+    ctx.beginPath();
+    ctx.arc(-4 + walkCycle, -9, 4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    // Right foot
+    ctx.beginPath();
+    ctx.arc(-4 - walkCycle, 9, 4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    // B. Draw Backpack Accessory (drawn behind body)
+    if (entity.accessory === 'backpack') {
+        ctx.fillStyle = '#1c1f35';
+        ctx.strokeStyle = mainColor;
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.roundRect(-16, -8, 6, 16, 2);
+        ctx.fill();
+        ctx.stroke();
+    }
+
+    // C. Draw Arms & Hands (Humanoid arm pose holding weapon)
+    ctx.fillStyle = '#16192b';
+    ctx.strokeStyle = '#474c67';
+    ctx.lineWidth = 3.5;
+
+    const isLongGun = ['rifle', 'shotgun', 'sniper'].includes(entity.gunType);
+
+    if (isLongGun) {
+        // Two-handed gun hold pose
+        // Left arm stretching forward
+        ctx.beginPath();
+        ctx.moveTo(0, -11);
+        ctx.lineTo(10, -7);
+        ctx.stroke();
+
+        // Right arm holding trigger
+        ctx.beginPath();
+        ctx.moveTo(0, 11);
+        ctx.lineTo(14, 5);
+        ctx.stroke();
+
+        // Hands (flesh / skin color)
+        ctx.fillStyle = '#f3a38c';
+        ctx.strokeStyle = mainColor;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.arc(10, -7, 3, 0, Math.PI * 2);
+        ctx.arc(14, 5, 3, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+    } else {
+        // One-handed or compact SMG hold pose
+        // Right arm pointing straight forward
+        ctx.beginPath();
+        ctx.moveTo(0, 11);
+        ctx.lineTo(14, 4);
+        ctx.stroke();
+
+        // Left arm in defensive pose
+        ctx.beginPath();
+        ctx.moveTo(0, -11);
+        ctx.lineTo(3, -7);
+        ctx.stroke();
+
+        // Hands
+        ctx.fillStyle = '#f3a38c';
+        ctx.strokeStyle = mainColor;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.arc(14, 4, 3, 0, Math.PI * 2);
+        ctx.arc(3, -7, 3, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+    }
+
+    // D. Draw Gun (pointing forward, overlaying arms)
+    ctx.save();
+    ctx.fillStyle = '#1c1f35';
+    ctx.strokeStyle = '#5f6583';
+    ctx.lineWidth = 1.5;
+
+    switch (entity.gunType) {
+        case 'pistol':
+            ctx.fillRect(8, 1, 10, 3.5);
+            ctx.strokeRect(8, 1, 10, 3.5);
+            break;
+        case 'smg':
+            ctx.fillRect(7, 1, 15, 5);
+            ctx.strokeRect(7, 1, 15, 5);
+            ctx.fillStyle = '#3a3f58';
+            ctx.fillRect(13, 6, 2.5, 6);
+            break;
+        case 'rifle':
+            ctx.fillRect(5, 1, 23, 6);
+            ctx.strokeRect(5, 1, 23, 6);
+            break;
+        case 'shotgun':
+            ctx.fillRect(7, -1, 17, 8);
+            ctx.strokeRect(7, -1, 17, 8);
+            break;
+        case 'sniper':
+            ctx.fillRect(3, 1.5, 31, 4.5);
+            ctx.strokeRect(3, 1.5, 31, 4.5);
+            // Scope
+            ctx.fillStyle = '#474c67';
+            ctx.beginPath();
+            ctx.arc(16, -1, 3.5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+            break;
+    }
+    ctx.restore();
+
+    // E. Draw Torso (Cyber armor panel)
+    ctx.fillStyle = '#16192b';
+    ctx.strokeStyle = mainColor;
+    ctx.lineWidth = 2.5;
+    ctx.shadowColor = mainColor;
+    ctx.shadowBlur = isMe ? 8 : 2;
+
+    ctx.beginPath();
+    ctx.roundRect(-8, -11, 16, 22, 4); // Broad shoulders, narrow waist
+    ctx.fill();
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+
+    // Glowing core indicator on chest
+    ctx.strokeStyle = mainColor;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(-3, -3);
+    ctx.lineTo(1, 0);
+    ctx.lineTo(-3, 3);
+    ctx.stroke();
+
+    // F. Draw Head
+    ctx.fillStyle = '#0b0c10';
+    ctx.strokeStyle = mainColor;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(0, 0, 8, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    // G. Accessories (Helmet, Visor, Shoulder Pads)
+    if (entity.accessory === 'helmet') {
+        ctx.fillStyle = mainColor;
+        ctx.beginPath();
+        ctx.arc(0, 0, 8.5, -Math.PI/2, Math.PI/2);
+        ctx.fill();
+    }
+
+    if (entity.accessory === 'visor') {
+        ctx.strokeStyle = '#ffea00';
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.arc(0, 0, 8.5, -0.4, 0.4);
+        ctx.stroke();
+    }
+
+    if (entity.accessory === 'shoulder_pad') {
+        ctx.fillStyle = '#16192b';
+        ctx.strokeStyle = mainColor;
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(0, -11, 4, 0, Math.PI * 2);
+        ctx.arc(0, 11, 4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+    }
+
+    ctx.restore(); // Restore translation
+
+    // H. Draw HUD Text & Bars above the player
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '11px Orbitron, sans-serif';
+    ctx.textAlign = 'center';
+    
+    let label = entity.name;
+    if (entity.isBot) label += ` [BOT]`;
+    ctx.fillText(label, entity.x, entity.y - 36);
+
+    const barWidth = 36;
+    const barHeight = 4;
+    const barX = entity.x - barWidth / 2;
+    const barY = entity.y - 28;
+
+    // HP Background
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+    ctx.fillRect(barX, barY, barWidth, barHeight);
+
+    // HP Fill
+    const hpRatio = Math.max(0, entity.hp / entity.maxHp);
+    ctx.fillStyle = entity.team === 'red' ? '#ff3366' : entity.team === 'blue' ? '#00f0ff' : '#39ff14';
+    ctx.fillRect(barX, barY, barWidth * hpRatio, barHeight);
+
+    // Shield Fill
+    if (entity.maxShield > 0 && entity.shield > 0) {
+        const shieldRatio = entity.shield / entity.maxShield;
+        ctx.fillStyle = '#00a2ff';
+        ctx.fillRect(barX, barY - 2, barWidth * shieldRatio, 1.5);
+    }
+
+    // Reloading indicator
+    if (entity.isReloading) {
+        ctx.fillStyle = 'rgba(255, 234, 0, 0.8)';
+        ctx.fillRect(barX, barY + 5, barWidth * entity.reloadProgress, 2);
+    }
+}
 ```
