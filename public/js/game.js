@@ -1000,8 +1000,7 @@ function setupTouchControls() {
             // Left (A)
             if (deg <= -112.5 || deg >= 112.5) inputState.a = true;
         }
-        
-        syncInput();
+        // Skip direct syncInput here to avoid flooding. Periodic drawLoop sync will handle this.
     }, { passive: false });
 
     moveArea.addEventListener('touchend', (e) => {
@@ -1009,7 +1008,7 @@ function setupTouchControls() {
         moveJoystickActive = false;
         moveKnob.style.transform = 'translate(0px, 0px)';
         resetMoveInputs();
-        syncInput();
+        syncInput(); // Immediate sync on release
     }, { passive: false });
 
 
@@ -1050,8 +1049,7 @@ function setupTouchControls() {
         } else {
             inputState.shooting = false;
         }
-        
-        syncInput();
+        // Skip direct syncInput here to avoid flooding. Periodic drawLoop sync will handle this.
     }, { passive: false });
 
     aimArea.addEventListener('touchend', (e) => {
@@ -1137,7 +1135,7 @@ function setupInput() {
         const dy = e.clientY - playerScreenY;
         
         inputState.mouseAngle = Math.atan2(dy, dx);
-        syncInput();
+        // Skip direct syncInput here to avoid flooding. Periodic drawLoop sync will handle this.
     });
 
     window.addEventListener('mousedown', (e) => {
@@ -1164,6 +1162,18 @@ function syncInput() {
 
 // Render game view based on received state
 let latestGameState = null;
+// Map to hold lerped positions for smooth rendering
+const lerpedPositions = new Map();
+let lastInputSentTime = 0;
+
+// Helper to interpolate angles smoothly avoiding the 180-degree wrap jump
+function lerpAngle(current, target, factor) {
+    let diff = target - current;
+    while (diff < -Math.PI) diff += Math.PI * 2;
+    while (diff > Math.PI) diff -= Math.PI * 2;
+    return current + diff * factor;
+}
+
 function renderGame(statePacket) {
     latestGameState = statePacket;
 }
@@ -1176,6 +1186,12 @@ function drawLoop() {
     const now = Date.now();
     const dt = (now - lastLoopTime) / 1000.0;
     lastLoopTime = now;
+
+    // Rate limit input updates to server (approx 30ms interval) to prevent socket flooding
+    if (now - lastInputSentTime >= 30) {
+        syncInput();
+        lastInputSentTime = now;
+    }
 
     // Calculate Client FPS
     framesThisSecond++;
@@ -1198,9 +1214,22 @@ function drawLoop() {
             myPlayerState = currentMe;
         }
 
-        // Camera positioning (follow my player center)
+        // Calculate lerped position for camera and local rendering of myself
+        let myLerp = lerpedPositions.get(myId);
+        if (!myLerp) {
+            myLerp = { x: myPlayerState.x, y: myPlayerState.y, angle: myPlayerState.angle };
+            lerpedPositions.set(myId, myLerp);
+        } else {
+            // Lerp extremely fast for player self-movement to keep controls responsive
+            const factor = 1 - Math.exp(-25 * dt);
+            myLerp.x += (myPlayerState.x - myLerp.x) * factor;
+            myLerp.y += (myPlayerState.y - myLerp.y) * factor;
+            myLerp.angle = lerpAngle(myLerp.angle, myPlayerState.angle, factor);
+        }
+
+        // Camera positioning (follow my lerped player center)
         ctx.save();
-        ctx.translate(canvas.width / 2 - myPlayerState.x, canvas.height / 2 - myPlayerState.y);
+        ctx.translate(canvas.width / 2 - myLerp.x, canvas.height / 2 - myLerp.y);
 
         // Draw Arena Grid floor
         drawArenaGrid();
@@ -1214,22 +1243,65 @@ function drawLoop() {
         // Draw death particles
         drawParticles();
 
-        // Draw Bullets
+        // Draw Bullets (with Client Extrapolation to make them fly smooth)
         latestGameState.bullets.forEach(bullet => {
+            if (bullet.vx !== undefined && bullet.vy !== undefined) {
+                bullet.x += bullet.vx * dt;
+                bullet.y += bullet.vy * dt;
+            }
             drawBullet(bullet);
         });
 
-        // Draw Bots
+        // Draw Bots with smooth Lerp interpolation
         latestGameState.bots.forEach(bot => {
-            drawEntity(bot);
+            let lerpData = lerpedPositions.get(bot.id);
+            if (!lerpData) {
+                lerpData = { x: bot.x, y: bot.y, angle: bot.angle };
+                lerpedPositions.set(bot.id, lerpData);
+            } else {
+                const factor = 1 - Math.exp(-18 * dt);
+                lerpData.x += (bot.x - lerpData.x) * factor;
+                lerpData.y += (bot.y - lerpData.y) * factor;
+                lerpData.angle = lerpAngle(lerpData.angle, bot.angle, factor);
+            }
+            const drawnBot = { ...bot, x: lerpData.x, y: lerpData.y, angle: lerpData.angle };
+            drawEntity(drawnBot);
         });
 
-        // Draw Players
+        // Draw Players with smooth Lerp interpolation
         latestGameState.players.forEach(player => {
-            drawEntity(player);
+            let lerpData = lerpedPositions.get(player.id);
+            if (!lerpData) {
+                lerpData = { x: player.x, y: player.y, angle: player.angle };
+                lerpedPositions.set(player.id, lerpData);
+            } else {
+                if (player.id === myId) {
+                    lerpData.x = myLerp.x;
+                    lerpData.y = myLerp.y;
+                    lerpData.angle = myLerp.angle;
+                } else {
+                    const factor = 1 - Math.exp(-18 * dt);
+                    lerpData.x += (player.x - lerpData.x) * factor;
+                    lerpData.y += (player.y - lerpData.y) * factor;
+                    lerpData.angle = lerpAngle(lerpData.angle, player.angle, factor);
+                }
+            }
+            const drawnPlayer = { ...player, x: lerpData.x, y: lerpData.y, angle: lerpData.angle };
+            drawEntity(drawnPlayer);
         });
 
         ctx.restore();
+
+        // Garbage collection for offline/dead lerp entries
+        const activeIds = new Set([
+            ...latestGameState.players.map(p => p.id),
+            ...latestGameState.bots.map(b => b.id)
+        ]);
+        for (let id of lerpedPositions.keys()) {
+            if (!activeIds.has(id)) {
+                lerpedPositions.delete(id);
+            }
+        }
 
         // Draw Mini-map HUD overlay
         drawMinimap();
@@ -1707,7 +1779,7 @@ function drawMinimap() {
 
     const myTeam = myPlayerState.team;
 
-    // 3. Draw other Entities (Teammates and Enemies)
+    // 3. Draw other Entities (Teammates and Enemies) using lerped positions for smoothness
     // Draw players
     latestGameState.players.forEach(p => {
         if (p.hp <= 0 || p.id === myId) return;
@@ -1718,7 +1790,9 @@ function drawMinimap() {
         if (latestGameState.gameMode === 'team' || latestGameState.gameMode === 'coop') {
             if (p.team === myTeam) color = '#00f0ff'; // teammate blue
         }
-        drawDot(p.x, p.y, color, size);
+        
+        const lerpPos = lerpedPositions.get(p.id) || p;
+        drawDot(lerpPos.x, lerpPos.y, color, size);
     });
 
     // Draw bots
@@ -1731,11 +1805,14 @@ function drawMinimap() {
         if (latestGameState.gameMode === 'team' || latestGameState.gameMode === 'coop' || latestGameState.gameMode === 'vs_bot') {
             if (b.team === myTeam) color = '#00f0ff'; // teammate bot blue
         }
-        drawDot(b.x, b.y, color, size);
+        
+        const lerpPos = lerpedPositions.get(b.id) || b;
+        drawDot(lerpPos.x, lerpPos.y, color, size);
     });
 
-    // 4. Draw Self (drawn on top with yellow pulsing indicator)
-    drawDot(myPlayerState.x, myPlayerState.y, '#ffea00', 4.5, true);
+    // 4. Draw Self (drawn on top with yellow pulsing indicator) using lerp position
+    const myLerpPos = lerpedPositions.get(myId) || myPlayerState;
+    drawDot(myLerpPos.x, myLerpPos.y, '#ffea00', 4.5, true);
 
     ctx.restore();
 }
@@ -1789,6 +1866,42 @@ function setupFullscreen() {
     document.addEventListener('fullscreenchange', onFullscreenChange);
     document.addEventListener('webkitfullscreenchange', onFullscreenChange);
     document.addEventListener('msfullscreenchange', onFullscreenChange);
+}
+
+// QR Code Lightbox Controls
+function openQrModal(imgSrc, titleText) {
+    const modal = document.getElementById('qrModal');
+    const modalImg = document.getElementById('qrModalImg');
+    const modalTitle = document.getElementById('qrModalTitle');
+    
+    if (!modal || !modalImg || !modalTitle) return;
+
+    modalTitle.textContent = titleText;
+    
+    if (imgSrc.includes('bank')) {
+        modalTitle.style.color = 'var(--cyber-pink)';
+        modal.querySelector('.qr-modal-content').style.borderColor = 'rgba(255, 0, 127, 0.2)';
+        modal.querySelector('.qr-modal-content').style.boxShadow = '0 0 30px rgba(255, 0, 127, 0.15)';
+    } else {
+        modalTitle.style.color = 'var(--cyber-cyan)';
+        modal.querySelector('.qr-modal-content').style.borderColor = 'rgba(0, 240, 255, 0.2)';
+        modal.querySelector('.qr-modal-content').style.boxShadow = '0 0 30px rgba(0, 240, 255, 0.15)';
+    }
+    
+    modalImg.src = imgSrc;
+    modal.classList.add('active');
+    modal.style.display = 'flex';
+}
+
+function closeQrModal() {
+    const modal = document.getElementById('qrModal');
+    if (!modal) return;
+    modal.classList.remove('active');
+    setTimeout(() => {
+        if (!modal.classList.contains('active')) {
+            modal.style.display = 'none';
+        }
+    }, 300);
 }
 
 // Utility: HTML Escaper

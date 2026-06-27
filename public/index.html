@@ -179,10 +179,50 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Community & Contact panel inside left panel -->
+                <div style="margin-top: 35px; padding-top: 20px; border-top: 1px dashed rgba(0, 240, 255, 0.15);">
+                    <h3 class="section-title" style="font-size: 0.95rem; margin-bottom: 8px; color: var(--cyber-cyan); border-bottom: none; padding-bottom: 0;">CỘNG ĐỒNG & LIÊN HỆ</h3>
+                    
+                    <div style="font-size: 0.85rem; line-height: 1.6; color: var(--text-secondary); display: flex; flex-direction: column; gap: 12px;">
+                        <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <span style="font-size: 1.1rem;">💬</span>
+                                <span>Nhóm thảo luận Zalo: </span>
+                                <a href="https://zalo.me/g/7set38earsw0z1uwipau" target="_blank" style="color: var(--cyber-cyan); font-weight: bold; text-decoration: none; border-bottom: 1px dashed var(--cyber-cyan); transition: all 0.2s;">Tham gia nhóm</a>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <span style="font-size: 1.1rem;">📞</span>
+                                <span>Liên hệ hỗ trợ Zalo: </span>
+                                <a href="https://zalo.me/w/0972218408" target="_blank" style="color: var(--cyber-pink); font-weight: bold; text-decoration: none; border-bottom: 1px dashed var(--cyber-pink); transition: all 0.2s;">0972.218.408</a>
+                            </div>
+                        </div>
+
+                        <!-- QR Codes Row -->
+                        <div style="display: flex; gap: 25px; margin-top: 5px; align-items: center; flex-wrap: wrap;">
+                            <!-- Zalo QR Thumbnail -->
+                            <div style="display: flex; flex-direction: column; align-items: center; gap: 6px; cursor: pointer;" onclick="openQrModal('zalo_qr.png', 'MÃ QR NHÓM ZALO')">
+                                <div class="qr-thumb" style="width: 80px; height: 80px; border: 2px solid rgba(0, 240, 255, 0.3); border-radius: 8px; overflow: hidden; background: #fff; box-shadow: 0 0 10px rgba(0, 240, 255, 0.2); transition: transform 0.2s;">
+                                    <img src="zalo_qr.png" alt="Zalo QR" style="width: 100%; height: 100%; object-fit: cover;">
+                                </div>
+                                <span style="font-size: 0.75rem; color: var(--cyber-cyan); font-weight: 500;">QR Nhóm Thảo Luận</span>
+                            </div>
+
+                            <!-- Bank QR Thumbnail -->
+                            <div style="display: flex; flex-direction: column; align-items: center; gap: 6px; cursor: pointer;" onclick="openQrModal('bank_qr.jpg', 'MỜI CAFE ADMIN (NGUYEN BA HUNG)')">
+                                <div class="qr-thumb" style="width: 80px; height: 80px; border: 2px solid rgba(255, 0, 127, 0.3); border-radius: 8px; overflow: hidden; background: #fff; box-shadow: 0 0 10px rgba(255, 0, 127, 0.2); transition: transform 0.2s;">
+                                    <img src="bank_qr.jpg" alt="Bank QR" style="width: 100%; height: 100%; object-fit: cover;">
+                                </div>
+                                <span style="font-size: 0.75rem; color: var(--cyber-pink); font-weight: 500;">☕ Mời Cafe Admin</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <!-- Right: Play, Rooms, Create -->
-            <div class="cyber-panel" style="display: flex; flex-direction: column; justify-content: space-between;">
+            <div style="display: flex; flex-direction: column; gap: 15px;">
+                <div class="cyber-panel" style="display: flex; flex-direction: column; justify-content: space-between; flex: 1;">
                 <div>
                     <h2 class="section-title">Phòng Chờ Trực Tuyến</h2>
                     <div class="room-list-container" id="roomListContainer">
@@ -245,9 +285,11 @@
                         <button class="cyber-btn pink" id="createRoomBtn">Tạo phòng mới</button>
                     </div>
                 </div>
+
             </div>
         </div>
     </div>
+</div>
 </div>
 
     <!-- 2. ROOM LOBBY SCREEN -->
@@ -300,7 +342,6 @@
                         <button class="cyber-btn" id="lobbyStartBtn" style="margin-bottom: 12px; display: none;">Bắt đầu trận đấu</button>
                         <button class="cyber-btn pink" id="lobbyLeaveBtn">Rời phòng</button>
                     </div>
-                </div>
             </div>
         </div>
     </div>
@@ -436,6 +477,18 @@
         <!-- Instructions Overlay -->
         <div class="ingame-instructions">
             Di chuyển: <span>WASD</span> | Ngắm: <span>Chuột</span> | Bắn: <span>Chuột trái</span> | Lướt: <span>Space</span> | Nạp đạn: <span>R</span>
+        </div>
+    </div>
+
+    <!-- QR CODE LIGHTBOX MODAL -->
+    <div id="qrModal" class="qr-modal" onclick="closeQrModal()">
+        <div class="qr-modal-content" onclick="event.stopPropagation()">
+            <span class="qr-modal-close" onclick="closeQrModal()">&times;</span>
+            <h3 id="qrModalTitle" style="color: var(--cyber-cyan); text-align: center; margin-bottom: 15px; font-family: inherit; font-size: 1rem; letter-spacing: 1px;">MÃ QR</h3>
+            <div style="width: 280px; height: 280px; background: #fff; border-radius: 12px; overflow: hidden; padding: 10px; margin: 0 auto; box-shadow: 0 0 20px rgba(0,0,0,0.8);">
+                <img id="qrModalImg" src="" alt="QR Code Large" style="width: 100%; height: 100%; object-fit: contain;">
+            </div>
+            <p style="color: var(--text-secondary); text-align: center; font-size: 0.8rem; margin-top: 15px;">Chạm ra ngoài hoặc bấm nút X để đóng</p>
         </div>
     </div>
 

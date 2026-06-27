@@ -817,6 +817,8 @@ class GameRoom {
                 id: b.id,
                 x: Math.round(b.x),
                 y: Math.round(b.y),
+                vx: Math.round(b.vx),
+                vy: Math.round(b.vy),
                 angle: Number(b.angle.toFixed(2)),
                 ownerTeam: b.ownerTeam
             }))
