@@ -1427,7 +1427,7 @@ function handleServerPacket(packet) {
             // Auto-rematch loop for Spectator Mode
             if (isAutoSpectate) {
                 cancelAutoStart(); // clear first
-                let countdown = 10;
+                let countdown = 6;
                 
                 // Add temporary countdown element below scoreboard
                 const countdownDiv = document.createElement('div');
@@ -1470,7 +1470,7 @@ function handleServerPacket(packet) {
                             }
                         }, 200);
                     }
-                }, 10000);
+                }, 6000);
             }
             break;
         }
@@ -2024,6 +2024,10 @@ function cancelAutoStart() {
     if (autoStartIntervalId) {
         clearInterval(autoStartIntervalId);
         autoStartIntervalId = null;
+    }
+    const oldCountdown = document.getElementById('autoRematchCountdown');
+    if (oldCountdown) {
+        oldCountdown.remove();
     }
 }
 
