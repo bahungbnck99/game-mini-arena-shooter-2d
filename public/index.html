@@ -20,9 +20,47 @@
 
         <!-- AUDIO CONTROL -->
         <button class="audio-mute-btn" id="audioToggle">
-            <span id="audioIcon">🔊</span>
-            <span id="audioText">Bật âm thanh</span>
+            <span id="audioIcon">🔈</span>
+            <span id="audioText">Âm thanh</span>
         </button>
+
+        <!-- VOLUME SETTINGS PANEL (DROPDOWN) -->
+        <div id="volumeSettingsPanel" class="hidden" style="position: absolute; top: 75px; right: 20px; z-index: 1000; background: rgba(8, 9, 15, 0.95); border: 2px solid var(--cyber-cyan); box-shadow: var(--glow-cyan); padding: 15px; border-radius: 8px; font-family: 'Orbitron', Arial; width: 230px; color: #fff; pointer-events: auto;">
+            <div style="font-size: 0.8rem; font-weight: bold; text-align: center; text-transform: uppercase; color: var(--cyber-cyan); margin-bottom: 12px; letter-spacing: 1px;">Cài đặt âm thanh</div>
+            
+            <!-- Mute Option -->
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; font-size: 0.75rem; user-select: none;">
+                <span>Tắt tiếng tất cả</span>
+                <input type="checkbox" id="volumeMuteCheck" style="width: 16px; height: 16px; accent-color: var(--cyber-cyan); cursor: pointer;">
+            </div>
+            
+            <!-- BGM Slider -->
+            <div style="margin-bottom: 12px;">
+                <div style="display: flex; justify-content: space-between; font-size: 0.7rem; margin-bottom: 4px; user-select: none;">
+                    <span>Nhạc nền (BGM)</span>
+                    <span id="bgmVolumeVal">30%</span>
+                </div>
+                <input type="range" id="bgmVolumeSlider" min="0" max="100" value="30" style="width: 100%; height: 6px; border-radius: 3px; accent-color: var(--cyber-cyan); cursor: pointer;">
+            </div>
+            
+            <!-- Gun SFX Slider -->
+            <div style="margin-bottom: 12px;">
+                <div style="display: flex; justify-content: space-between; font-size: 0.7rem; margin-bottom: 4px; user-select: none;">
+                    <span>Tiếng súng (SFX)</span>
+                    <span id="gunVolumeVal">40%</span>
+                </div>
+                <input type="range" id="gunVolumeSlider" min="0" max="100" value="40" style="width: 100%; height: 6px; border-radius: 3px; accent-color: var(--cyber-cyan); cursor: pointer;">
+            </div>
+
+            <!-- Other SFX Slider -->
+            <div style="margin-bottom: 5px;">
+                <div style="display: flex; justify-content: space-between; font-size: 0.7rem; margin-bottom: 4px; user-select: none;">
+                    <span>Hiệu ứng khác</span>
+                    <span id="otherVolumeVal">40%</span>
+                </div>
+                <input type="range" id="otherVolumeSlider" min="0" max="100" value="40" style="width: 100%; height: 6px; border-radius: 3px; accent-color: var(--cyber-cyan); cursor: pointer;">
+            </div>
+        </div>
 
         <!-- EXIT GAME CONTROL -->
         <button class="audio-mute-btn hidden" id="exitGameBtn" style="border-color: var(--cyber-pink); color: var(--cyber-pink);">
@@ -222,67 +260,113 @@
 
             <!-- Right: Play, Rooms, Create -->
             <div style="display: flex; flex-direction: column; gap: 15px;">
-                <div class="cyber-panel" style="display: flex; flex-direction: column; justify-content: space-between; flex: 1;">
-                <div>
-                    <h2 class="section-title">Phòng Chờ Trực Tuyến</h2>
-                    <div class="room-list-container" id="roomListContainer">
-                        <!-- Rooms injected by JS -->
-                        <div class="no-rooms">Không có phòng chờ nào. Tạo phòng để bắt đầu!</div>
+                <div class="cyber-panel" style="display: flex; flex-direction: column; flex: 1; padding: 15px; position: relative;">
+                    <!-- Tab Headers -->
+                    <div style="display: flex; border-bottom: 2px solid rgba(0, 204, 255, 0.15); margin-bottom: 15px;">
+                        <div id="rightTabLobby" class="menu-tab active" style="flex: 1; text-align: center; padding: 10px 0; font-family: 'Orbitron'; font-size: 0.9rem; cursor: pointer; border-bottom: 3px solid var(--cyber-cyan); color: var(--cyber-cyan); text-shadow: var(--glow-cyan); font-weight: bold; transition: all 0.3s; letter-spacing: 1px;">THI ĐẤU</div>
+                        <div id="rightTabRanked" class="menu-tab" style="flex: 1; text-align: center; padding: 10px 0; font-family: 'Orbitron'; font-size: 0.9rem; cursor: pointer; color: var(--text-secondary); transition: all 0.3s; letter-spacing: 1px;">BXH THÁCH ĐẤU</div>
                     </div>
-                </div>
 
-                <div>
-                    <div class="input-group">
-                        <label for="roomCodeInput">Nhập mã phòng</label>
-                        <input type="text" id="roomCodeInput" class="cyber-input" style="text-transform: uppercase;" placeholder="Mã 4 ký tự..." maxlength="4">
-                    </div>
-                    
-                    <button class="cyber-btn" id="joinRoomBtn">Vào phòng</button>
-
-                    <div id="roomConfigArea">
-                        <div class="input-group">
-                            <label>Chế độ chơi (Tạo phòng)</label>
-                            <select id="gameModeSelect" class="cyber-input" style="background: #10121e;">
-                                <option value="vs_bot">Người vs Bot (Solo)</option>
-                                <option value="coop">Người + Bot phe ta vs Bot địch</option>
-                                <option value="pvp">Người vs Người (FFA)</option>
-                                <option value="team">Team Battle (Xanh vs Đỏ)</option>
-                            </select>
-                        </div>
-                        <div class="input-group">
-                            <label>Độ khó của Bot</label>
-                            <select id="botDifficultySelect" class="cyber-input" style="background: #10121e;">
-                                <option value="easy">Dễ</option>
-                                <option value="medium" selected>Vừa</option>
-                                <option value="hard">Khó</option>
-                            </select>
-                        </div>
-                        <div class="input-group">
-                            <label>Thời gian trận đấu</label>
-                            <select id="matchDurationSelect" class="cyber-input" style="background: #10121e;">
-                                <option value="60">1 Phút (Nhanh)</option>
-                                <option value="120" selected>2 Phút (Chuẩn)</option>
-                                <option value="180">3 Phút</option>
-                                <option value="300">5 Phút</option>
-                            </select>
-                        </div>
-                        <div class="input-group" id="botCountInputGroup">
-                            <label for="botCountInput">Số lượng Bot địch (N)</label>
-                            <input type="number" id="botCountInput" class="cyber-input" value="4" min="1" max="10">
-                            <div id="botCountHelperText" style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 4px;">
-                                Phe địch sẽ có 4 Bot đối thủ.
+                    <!-- Lobby Content -->
+                    <div id="rightLobbyContent" style="display: flex; flex-direction: column; justify-content: space-between; flex-grow: 1; height: 100%;">
+                        <div>
+                            <h2 class="section-title">Phòng Chờ Trực Tuyến</h2>
+                            <div class="room-list-container" id="roomListContainer" style="max-height: 180px; overflow-y: auto;">
+                                <!-- Rooms injected by JS -->
+                                <div class="no-rooms">Không có phòng chờ nào. Tạo phòng để bắt đầu!</div>
                             </div>
                         </div>
-                        <div class="input-group" id="maxPlayersInputGroup">
-                            <label>Số người chơi tối đa (Phòng)</label>
-                            <select id="maxPlayersSelect" class="cyber-input" style="background: #10121e;">
-                                <option value="2">2 Người chơi</option>
-                                <option value="4" selected>4 Người chơi</option>
-                                <option value="6">6 Người chơi</option>
-                                <option value="8">8 Người chơi</option>
-                            </select>
+
+                        <div>
+                            <div class="input-group">
+                                <label for="roomCodeInput">Nhập mã phòng</label>
+                                <input type="text" id="roomCodeInput" class="cyber-input" style="text-transform: uppercase;" placeholder="Mã 4 ký tự..." maxlength="4">
+                            </div>
+                            
+                            <button class="cyber-btn" id="joinRoomBtn">Vào phòng</button>
+
+                            <div id="roomConfigArea" style="margin-top: 10px;">
+                                <div class="input-group">
+                                    <label>Chế độ chơi (Tạo phòng)</label>
+                                    <select id="gameModeSelect" class="cyber-input" style="background: #10121e;">
+                                        <option value="vs_bot">Người vs Bot (Solo)</option>
+                                        <option value="coop">Người + Bot phe ta vs Bot địch</option>
+                                        <option value="pvp">Người vs Người (FFA)</option>
+                                        <option value="team">Team Battle (Xanh vs Đỏ)</option>
+                                        <option value="survival">Sinh tồn Solo </option>
+                                        <option value="survival_team">Sinh tồn Tổ đội </option>
+                                        <option value="ranked">Đấu Xếp Hạng (Ranked Solo)</option>
+                                    </select>
+                                </div>
+                                <div class="input-group" id="botDifficultyInputGroup">
+                                    <label>Độ khó của Bot</label>
+                                    <select id="botDifficultySelect" class="cyber-input" style="background: #10121e;">
+                                        <option value="easy">Dễ</option>
+                                        <option value="medium" selected>Vừa</option>
+                                        <option value="hard">Khó</option>
+                                        <option value="expert">Chuyên gia</option>
+                                        <option value="nightmare">Siêu khó (Nightmare)</option>
+                                    </select>
+                                </div>
+                                <div class="input-group" id="matchDurationInputGroup">
+                                    <label>Thời gian trận đấu</label>
+                                    <select id="matchDurationSelect" class="cyber-input" style="background: #10121e;">
+                                        <option value="0">Vô hạn (Sinh tồn)</option>
+                                        <option value="60">1 Phút (Nhanh)</option>
+                                        <option value="120" selected>2 Phút (Chuẩn)</option>
+                                        <option value="180">3 Phút</option>
+                                        <option value="300">5 Phút</option>
+                                    </select>
+                                </div>
+                                <div class="input-group" id="botCountInputGroup">
+                                    <label for="botCountInput">Số lượng Bot địch (N)</label>
+                                    <input type="number" id="botCountInput" class="cyber-input" value="4" min="1" max="10">
+                                    <div id="botCountHelperText" style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 4px;">
+                                        Phe địch sẽ có 4 Bot đối thủ.
+                                    </div>
+                                </div>
+                                <div class="input-group" id="maxPlayersInputGroup">
+                                    <label>Số người chơi tối đa (Phòng)</label>
+                                    <select id="maxPlayersSelect" class="cyber-input" style="background: #10121e;">
+                                        <option value="2">2 Người chơi</option>
+                                        <option value="4" selected>4 Người chơi</option>
+                                        <option value="6">6 Người chơi</option>
+                                        <option value="8">8 Người chơi</option>
+                                    </select>
+                                </div>
+                                <div class="input-group" id="survivalConfigGroup" style="display: none;">
+                                    <label id="survivalConfigLabel">Số người tham gia sinh tồn</label>
+                                    <input type="number" id="survivalConfigInput" class="cyber-input" value="20" min="2" max="100">
+                                    <div id="survivalConfigHelper" style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 4px; margin-bottom: 8px;">
+                                        Trận đấu sẽ tự động điền Bot cho đủ số lượng tham gia.
+                                    </div>
+                                    
+                                    <label style="margin-top: 10px; display: block;">Thời gian chờ bo co sau (giây)</label>
+                                    <input type="number" id="survivalSafeZoneDurationInput" class="cyber-input" value="180" min="10" max="600">
+                                    
+                                    <label style="margin-top: 10px; display: block;">Thời gian co bo (giây)</label>
+                                    <input type="number" id="survivalShrinkDurationInput" class="cyber-input" value="30" min="5" max="300">
+                                </div>
+                                <button class="cyber-btn pink" id="createRoomBtn">Tạo phòng mới</button>
+                            </div>
                         </div>
-                        <button class="cyber-btn pink" id="createRoomBtn">Tạo phòng mới</button>
+                    </div>
+
+                    <!-- Ranked Leaderboard Content -->
+                    <div id="rightRankedContent" style="display: none; flex-direction: column; flex-grow: 1; height: 100%;">
+                        <h3 style="color: var(--cyber-pink); text-shadow: 0 0 10px var(--cyber-pink); text-align: center; margin-bottom: 20px; font-family: 'Orbitron'; font-size: 1.15rem; margin-top: 5px; letter-spacing: 1px;">🏆 ĐƯỜNG ĐUA THÁCH ĐẤU</h3>
+                        
+                        <div style="display: flex; justify-content: center; gap: 6px; margin-bottom: 20px;">
+                            <button class="cyber-btn" id="dbTabDay" style="padding: 6px 10px; font-size: 0.78rem; flex: 1; min-width: auto; background: var(--cyber-pink); color: #fff;">Ngày</button>
+                            <button class="cyber-btn" id="dbTabWeek" style="padding: 6px 10px; font-size: 0.78rem; flex: 1; min-width: auto; background: rgba(255,255,255,0.05);">Tuần</button>
+                            <button class="cyber-btn" id="dbTabMonth" style="padding: 6px 10px; font-size: 0.78rem; flex: 1; min-width: auto; background: rgba(255,255,255,0.05);">Tháng</button>
+                            <button class="cyber-btn" id="dbTabYear" style="padding: 6px 10px; font-size: 0.78rem; flex: 1; min-width: auto; background: rgba(255,255,255,0.05);">Năm</button>
+                        </div>
+                        
+                        <div id="dbRankedList" style="font-size: 0.9rem; line-height: 1.8; overflow-y: auto; max-height: 380px; padding-right: 6px; flex-grow: 1;">
+                            <!-- Injected by JS -->
+                        </div>
+                        <p style="color: var(--text-secondary); text-align: center; font-size: 0.75rem; margin-top: 15px; font-style: italic;">BXH tải lại tự động mỗi khi bạn bấm chọn tab</p>
                     </div>
                 </div>
 
@@ -335,9 +419,20 @@
                         </div>
                     </div>
 
+                    <div id="lobbySquadSelectArea" style="margin-top: 20px; display: none;">
+                        <label style="display: block; font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px;">Chọn Tổ Đội (Squad)</label>
+                        <div id="lobbySquadBtnsContainer" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                            <!-- Dynamic buttons will be created here -->
+                        </div>
+                    </div>
+
                     <div style="margin-top: 20px;">
                         <div id="lobbyWaitWarning" style="color: var(--cyber-yellow); font-size: 0.85rem; font-weight: bold; margin-bottom: 12px; display: none; text-align: center; text-shadow: 0 0 8px rgba(255, 189, 3, 0.3);">
                             Đang đợi thêm người chơi tham gia (tối thiểu 2 người)...
+                        </div>
+                        <div id="lobbySpectateToggleArea" style="margin-bottom: 16px; display: flex; align-items: center; justify-content: center; gap: 8px; user-select: none;">
+                            <input type="checkbox" id="lobbySpectateCheck" style="width: 18px; height: 18px; cursor: pointer; accent-color: var(--cyber-cyan);">
+                            <label for="lobbySpectateCheck" style="font-size: 0.85rem; font-weight: bold; color: var(--cyber-cyan); text-shadow: var(--glow-cyan); cursor: pointer; text-transform: uppercase; letter-spacing: 0.5px;">Chế độ xem thi đấu (Spectator)</label>
                         </div>
                         <button class="cyber-btn" id="lobbyStartBtn" style="margin-bottom: 12px; display: none;">Bắt đầu trận đấu</button>
                         <button class="cyber-btn pink" id="lobbyLeaveBtn">Rời phòng</button>
@@ -395,6 +490,17 @@
                     <div class="hud-shield-fill" id="hudShieldFill" style="width: 100%;"></div>
                 </div>
             </div>
+            <!-- HP PACKS INVENTORY (HỘP HP CỘNG DỒN) -->
+            <div class="hud-stat-bar-container" id="hudHealPackContainer" style="margin-top: 8px; display: flex; align-items: center; justify-content: space-between; user-select: none;">
+                <div style="display: flex; align-items: center; gap: 8px; font-size: 0.75rem;">
+                    <span style="background: var(--cyber-pink); color: #fff; padding: 2px 6px; border-radius: 4px; font-weight: bold; border: 1px solid var(--cyber-pink); box-shadow: 0 0 5px var(--cyber-pink);">PHÍM H</span>
+                    <span>Túi cứu thương (HP):</span>
+                </div>
+                <div id="hudHealPackText" style="font-weight: bold; color: var(--cyber-pink); text-shadow: 0 0 5px var(--cyber-pink); font-size: 0.85rem;">0 / 5</div>
+            </div>
+            
+            <!-- Dynamic Active RPG Buffs -->
+            <div class="hud-buffs-list" id="hudBuffsList"></div>
         </div>
 
         <!-- HUD: Weapon, Ammo, Dash (Bottom Right) -->
@@ -416,6 +522,7 @@
         <!-- HUD: Scoreboard (Top Right) -->
         <div class="hud-panel" id="hudLeaderboard">
             <div class="leaderboard-title">BẢNG ĐIỂM</div>
+            <div id="hudEntityCountDisplay" style="font-size: 0.72rem; color: var(--cyber-cyan); text-align: right; margin-top: -4px; margin-bottom: 6px; letter-spacing: 0.5px;"></div>
             <div class="leaderboard-list" id="leaderboardList">
                 <!-- Injected by JS -->
             </div>
@@ -430,10 +537,28 @@
         <div id="hudDeathOverlay" class="hidden">
             <div class="death-title">BẠN ĐÃ BỊ HẠ GỤC</div>
             <div class="death-killer" id="deathKillerText">Bởi Bot_Red_1</div>
-            <div class="respawn-timer">Hồi sinh sau <span id="respawnTimerCount">3</span> giây...</div>
+            <div class="respawn-timer" id="deathRespawnText">Hồi sinh sau <span id="respawnTimerCount">3</span> giây...</div>
+            <div id="deathSurvivalButtons" style="display: none; gap: 15px; margin-top: 20px; pointer-events: auto; justify-content: center; z-index: 50;">
+                <button class="cyber-btn" id="deathSpectateBtn" style="padding: 10px 20px; font-size: 0.95rem; background: var(--cyber-cyan); color: #08090f; box-shadow: var(--glow-cyan); font-weight: bold; border-color: var(--cyber-cyan);">Xem Tiếp (Spectate)</button>
+                <button class="cyber-btn pink" id="deathLeaveBtn" style="padding: 10px 20px; font-size: 0.95rem;">Rời Trận Đấu</button>
+            </div>
         </div>
         <!-- HUD: Match Timer (Top Center) -->
         <div class="hud-panel" id="hudTimer" style="top: 25px; left: 50%; transform: translateX(-50%); font-size: 2.2rem; font-weight: 800; color: var(--cyber-cyan); text-shadow: var(--glow-cyan); pointer-events: none;">02:00</div>
+
+        <!-- Survival HUD Panel (Visible only in Battle Royale Mode) -->
+        <div id="survivalHud" style="display: none; position: absolute; top: 80px; left: 50%; transform: translateX(-50%); flex-direction: column; align-items: center; gap: 8px; pointer-events: none; text-shadow: 0 0 10px rgba(0,0,0,0.8); z-index: 20;">
+            <div id="survivalRingTimer" style="font-size: 1.1rem; color: #ff3c83; font-weight: 700; background: rgba(16, 18, 30, 0.85); padding: 4px 16px; border-radius: 6px; border: 1.5px solid #ff3c83; text-transform: uppercase; letter-spacing: 1px; box-shadow: 0 0 15px rgba(255, 60, 131, 0.2);">Bo co sau: 03:00</div>
+            <div id="survivalAliveCount" style="font-size: 1.1rem; color: #00f3ff; font-weight: 700; background: rgba(16, 18, 30, 0.85); padding: 4px 16px; border-radius: 6px; border: 1.5px solid #00f3ff; text-transform: uppercase; letter-spacing: 1px; box-shadow: 0 0 15px rgba(0, 243, 255, 0.2);">Còn sống: 8 / 8</div>
+        </div>
+
+        <!-- Spectator HUD Panel (Visible when dead in Survival Mode) -->
+        <div id="spectatorHud" style="display: none; position: absolute; bottom: 85px; left: 50%; transform: translateX(-50%); flex-direction: column; align-items: center; gap: 8px; pointer-events: auto; z-index: 25; background: rgba(8, 9, 15, 0.9); border: 2px solid var(--cyber-cyan); padding: 12px 24px; border-radius: 8px; box-shadow: var(--glow-cyan); text-align: center; font-family: 'Orbitron', Arial;">
+            <div style="font-size: 0.75rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 1px;">Chế độ quan sát</div>
+            <div id="spectatorTargetName" style="font-size: 1.2rem; color: #fff; font-weight: 800; text-shadow: 0 0 8px var(--cyber-cyan);">Đang quan sát: -</div>
+            <div style="font-size: 0.7rem; color: var(--text-secondary); margin-top: 4px;">Bấm <span style="color: var(--cyber-cyan); font-weight: 700;">Chuột trái</span> để chuyển mục tiêu</div>
+            <button class="cyber-btn pink" id="spectatorLeaveBtn" style="padding: 6px 16px; font-size: 0.75rem; margin-top: 8px; border-radius: 4px;">Rời Trận Đấu</button>
+        </div>
 
         <!-- Game Over Screen Overlay -->
         <div id="hudGameOverOverlay" class="hidden" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(8, 9, 15, 0.95); backdrop-filter: blur(10px); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 40; pointer-events: auto; overflow-y: auto; padding: 20px 0;">
@@ -471,7 +596,24 @@
                 </div>
             </div>
 
-            <button class="cyber-btn pink" id="goBackBtn" style="width: 200px;">Quay lại Menu</button>
+            <!-- Ranked Leaderboard Panel -->
+            <div class="cyber-panel" id="goRankedLeaderboard" style="width: 500px; max-width: 90%; margin-bottom: 25px; background: rgba(16, 18, 30, 0.85); display: none; padding: 15px 20px;">
+                <h3 class="section-title" style="text-align: center; color: var(--cyber-pink); text-shadow: 0 0 10px var(--cyber-pink); margin-bottom: 15px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 6px; font-size: 1.1rem; font-family: 'Orbitron';">BẢNG XẾP HẠNG THÁCH ĐẤU</h3>
+                <div style="display: flex; justify-content: center; gap: 6px; margin-bottom: 15px;">
+                    <button class="cyber-btn" id="rankedTabDay" style="padding: 6px 10px; font-size: 0.78rem; flex: 1; min-width: auto; background: var(--cyber-pink); color: #fff;">Ngày</button>
+                    <button class="cyber-btn" id="rankedTabWeek" style="padding: 6px 10px; font-size: 0.78rem; flex: 1; min-width: auto; background: rgba(255,255,255,0.05);">Tuần</button>
+                    <button class="cyber-btn" id="rankedTabMonth" style="padding: 6px 10px; font-size: 0.78rem; flex: 1; min-width: auto; background: rgba(255,255,255,0.05);">Tháng</button>
+                    <button class="cyber-btn" id="rankedTabYear" style="padding: 6px 10px; font-size: 0.78rem; flex: 1; min-width: auto; background: rgba(255,255,255,0.05);">Năm</button>
+                </div>
+                <div id="goRankedList" style="font-size: 0.95rem; line-height: 1.8;">
+                    <!-- Injected by JS -->
+                </div>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 10px; align-items: center; margin-top: 15px;">
+                <button class="cyber-btn cyan" id="goLobbyBtn" style="width: 220px; display: none;">Chơi tiếp (Về sảnh)</button>
+                <button class="cyber-btn pink" id="goBackBtn" style="width: 220px;">Rời phòng (Về Menu)</button>
+            </div>
         </div>
 
         <!-- Instructions Overlay -->
@@ -491,6 +633,8 @@
             <p style="color: var(--text-secondary); text-align: center; font-size: 0.8rem; margin-top: 15px;">Chạm ra ngoài hoặc bấm nút X để đóng</p>
         </div>
     </div>
+
+
 
     <!-- Scripts -->
     <script src="js/audio.js"></script>

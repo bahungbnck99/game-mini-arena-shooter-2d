@@ -79,13 +79,36 @@ Create and implement the following files exactly:
   - `shotgun`: fireRate 0.8s, reload 2.0s, maxAmmo 5, damage 12, bulletSpeed 600, range 300, counts 5 bullets per shot with 0.35rad spread.
   - `sniper`: fireRate 1.5s, reload 2.5s, maxAmmo 5, damage 75, bulletSpeed 1400, range 1000.
 - Manage players, bullets, and bots arrays.
-- Arena Map size is 2400x1800. Set up multiple large static block obstacles (`obstacles = [{ x, y, w, h }, ...]`).
-- On `startGame()`, spawn bots based on configuration. For `'vs_bot'`, spawn N bots on the red team. For `'coop'`, fill player team to N with friendly bots and spawn N enemy bots. For `'pvp'`, spawn 3 FFA bots. For `'team'`, spawn bots to balance teams to 4 vs 4.
-- Implement `respawnEntity(entity)`: Find a safe spawn position using random coordinates while checking circle-rect collisions against all obstacles. Reset HP, Shield, and Ammo.
+- Arena Map size: Normal mode is 2400x1800 with static obstacles. Survival mode (`'survival'` / `'survival_team'`) is 6000x6000 with 180 randomly generated obstacles and 65 breakable loot crates.
+- On `startGame()`, spawn bots based on configuration:
+  * For standard modes (`'vs_bot'`, `'coop'`, `'pvp'`, `'team'`), spawn default bot allocations.
+  * For `'survival'` (Solo Survival), fill the remaining slots up to `maxPlayers` with bots (team: `'none'`).
+  * For `'survival_team'` (Team Survival), balance players into 4 squads (`'squad_1'`, `'squad_2'`, `'squad_3'`, `'squad_4'`). For each squad, spawn bots to fill the squad up to 5 members. Purely empty squads are filled with 5 bots to serve as opponents.
+  * Upon match start in `'survival_team'`, all members of the same squad must be spawned close to each other (around a random squad center point) without colliding with static obstacles.
+- Safe Zone Vòng Bo (Survival Mode):
+  - Safe zone starts covering the entire 30000x30000 map.
+  * Every 3 minutes, the safe zone shrinks by 75% of its current radius.
+  * The center of the new safe zone is randomly chosen within the bounds of the previous one.
+  * The shrinking transition is smoothly interpolated over 30 seconds.
+  * Players and bots standing outside the safe zone receive damage over time: `2% of maxHp per second * (zone.stage + 1)` that bypasses shields directly to HP.
+- Loot Crates (Survival Mode):
+  * Spawn 300 wooden crates (50 HP). Bouncing bullets against crates decreases their HP.
+  * Upon destruction, the crate drops 1-2 random buffs (heal, shield, dmg, speed, crit, vamp, pierce, defense).
+- Spectator Mode (Survival Mode):
+  * Dead entities never respawn in survival mode (respawnTimer set to infinity).
+  * Upon death, the client receives a Death Overlay offering two choices: "Xem Tiếp (Spectate)" and "Rời Trận Đấu (Leave Match)".
+  * Clicking "Spectate" hides the overlay, enters spectating mode, and displays a neon bottom Spectator HUD bar.
+  * The camera automatically follows the current spectating target with smooth lerp interpolation.
+  * Clicking Left Click anywhere on the game screen cycles the camera to focus on the next alive player or bot.
+  * Clicking "Leave Match" sends a `{ type: 'leave_room' }` message to cleanly return to the main menu.
+  * The game ends when only 1 entity survives (Solo) or only 1 squad survives (Team).
+- Match Duration Options:
+  * Allows choosing "Vô hạn (Sinh tồn)" (value 0).
+  * If infinite duration is selected, the server tracks elapsed time in `matchTimer` (counting up) and the game never ends due to timeout. Survival modes force infinite duration.
 - Physics Update Loop: Run at ~30 FPS (`setInterval` of 33ms).
   - Apply players movement input. If dashing, multiply speed by 2.75 for the dash duration.
   - Check map boundaries and resolve collisions against static obstacles.
-  - Move bullets: `bullet.x += bullet.vx * dt`, check collision against obstacles (destroy bullet on hit) and players/bots.
+  - Move bullets using Sub-stepping: slice the delta movement in steps of at most 12 pixels. At each sub-step, check boundary bounds and collision against static obstacles, crates, players, and bots. Destroy bullet and apply damage on first hit to prevent bullet tunneling.
   - Apply bullet damage: reduce HP (deduct from Shield first if active). On death, trigger respawn timer (3 seconds), increment killer score, increment victim deaths, and broadcast `{ type: 'death_event', victimName, killerName, x, y, team }`.
   - Update shoot cooldowns and reload timers.
 - Compile and broadcast game state every frame:
@@ -97,7 +120,11 @@ Create and implement the following files exactly:
       matchTimer: Math.ceil(this.matchTimer),
       players: [...], // id, name, x, y, angle, hp, maxHp, shield, score, deaths, ammo, maxAmmo, gunType, perk, skin, accessory, team, isReloading, reloadProgress
       bots: [...],    // same properties as players
-      bullets: [...]  // id, x, y, vx, vy, angle, ownerTeam (CRITICAL: vx and vy must be sent to allow client extrapolation!)
+      bullets: [...], // id, x, y, vx, vy, angle, ownerTeam (CRITICAL: vx and vy must be sent to allow client extrapolation!)
+      safeZone: { x, y, radius, timer, stage },
+      crates: [{ id, x, y, hp, maxHp }],
+      aliveCount: N,
+      totalCount: M
   }
   ```
 
@@ -238,6 +265,140 @@ function resolveCircleRectCollision(circle, rect) {
 module.exports = { checkCircleRectCollision, resolveCircleRectCollision };
 ```
 
+### In `server/GameRoom.js` (RPG damage calculations and lifesteal)
+```javascript
+// Calculate damage with critical hit, lifesteal, armor pierce, and broadcast pops
+damageEntity(entity, damage, attackerId, attackerName) {
+    if (entity.invincibleTimer > 0) return;
+
+    const attacker = this.players.get(attackerId) || this.bots.find(b => b.id === attackerId);
+
+    // 1. Critical Hit (2x damage)
+    const critChance = attacker ? attacker.critChance : 0.1;
+    const isCrit = Math.random() < critChance;
+    let finalDamage = damage;
+    if (isCrit) {
+        finalDamage = Math.round(finalDamage * 2.0);
+    }
+
+    // Apply Damage Reduction mitigation (defense buff)
+    const dmgRed = entity.damageReduction || 0.0;
+    const shieldAbsorption = entity.shield > 0 ? 0.25 : 0.0;
+    const totalMitigation = Math.min(0.75, dmgRed + shieldAbsorption); // cap max total mitigation at 75%
+    finalDamage = Math.round(finalDamage * (1.0 - totalMitigation));
+
+    const oldHp = entity.hp;
+    const oldShield = entity.shield;
+    entity.shieldRegenTimer = 0;
+
+    // 2. Armor Penetration (bypass shield directly to HP)
+    const armorPen = attacker ? attacker.armorPenetration : 0.0;
+    let penDamage = 0;
+    if (entity.shield > 0 && armorPen > 0) {
+        penDamage = Math.round(finalDamage * armorPen);
+        finalDamage = Math.max(0, finalDamage - penDamage);
+    }
+
+    if (penDamage > 0) {
+        entity.hp = Math.max(0, entity.hp - penDamage);
+    }
+
+    if (finalDamage > 0) {
+        if (entity.shield > 0) {
+            if (entity.shield >= finalDamage) {
+                entity.shield -= finalDamage;
+                finalDamage = 0;
+            } else {
+                finalDamage -= entity.shield;
+                entity.shield = 0;
+            }
+        }
+        if (finalDamage > 0) {
+            entity.hp = Math.max(0, entity.hp - finalDamage);
+        }
+    }
+
+    const actualDmgDealt = (oldHp - entity.hp) + (oldShield - entity.shield);
+
+    // 3. Lifesteal recovery
+    let lifestealHeal = 0;
+    if (attacker && attacker.hp > 0 && attacker.lifesteal > 0) {
+        lifestealHeal = Math.round(actualDmgDealt * attacker.lifesteal);
+        if (lifestealHeal > 0) {
+            attacker.hp = Math.min(200, attacker.hp + lifestealHeal);
+        }
+    }
+
+    this.broadcast({
+        type: 'audio_trigger',
+        action: 'hit',
+        x: entity.x,
+        y: entity.y
+    });
+
+    this.broadcast({
+        type: 'damage_pop',
+        x: entity.x,
+        y: entity.y - 12,
+        amount: actualDmgDealt,
+        isCrit: isCrit,
+        healAmount: lifestealHeal,
+        attackerId: attackerId
+    });
+
+    if (entity.hp <= 0) {
+        entity.deaths++;
+        this.handleDeath(entity, attackerId, attackerName);
+    }
+}
+
+// Return a player to the lobby and migrate host democratically if host is AFK
+playerReturnToLobby(wsId) {
+    const player = this.players.get(wsId);
+    if (!player) return;
+    player.inLobby = true;
+
+    if (this.state === 'playing' || this.state === 'countdown' || this.state === 'gameover') {
+        if (this.loopInterval) {
+            clearInterval(this.loopInterval);
+            this.loopInterval = null;
+        }
+        this.state = 'lobby';
+        this.bullets = [];
+        this.bots = [];
+        this.items = [];
+        this.hostId = wsId; // First player returning gets host!
+
+        this.players.forEach(p => {
+            p.score = 0;
+            p.deaths = 0;
+            p.hp = p.maxHp;
+            p.shield = p.maxShield;
+            p.ammo = p.maxAmmo;
+            p.isReloading = false;
+            p.respawnTimer = 0;
+            p.shootCooldownTimer = 0;
+            p.dashDurationTimer = 0;
+            p.damageMultiplier = 1.0;
+            p.speedMultiplier = 1.0;
+            p.critChance = 0.1;
+            p.lifesteal = 0.0;
+            p.armorPenetration = 0.0;
+            p.damageReduction = 0.0;
+            p.buffs = { damage: 0, speed: 0, crit: 0, vamp: 0, pierce: 0, defense: 0 };
+            p.invincibleTimer = 0;
+            if (p.id !== wsId) p.inLobby = false;
+        });
+    } else if (this.state === 'lobby') {
+        const currentHost = this.players.get(this.hostId);
+        if (!currentHost || !currentHost.inLobby) {
+            this.hostId = wsId; // Migrate if current host is AFK
+        }
+    }
+    this.broadcastLobbyUpdate();
+}
+```
+
 ### In `public/js/game.js` (Seamless rotation interpolation)
 ```javascript
 // Helper to interpolate angles smoothly avoiding the 180-degree wrap jump
@@ -296,6 +457,21 @@ class AudioSystem {
             osc.start(now);
             osc.stop(now + 0.15);
         }
+    }
+    playPickup() {
+        if (!this.ctx || this.muted) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(523.25, now);
+        osc.frequency.exponentialRampToValueAtTime(783.99, now + 0.12);
+        gain.gain.setValueAtTime(0.2, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+        osc.start(now);
+        osc.stop(now + 0.15);
     }
     playHit() {
         if (!this.ctx || this.muted) return;
@@ -358,6 +534,32 @@ class AudioSystem {
         playTone(329.63, now + 0.15, 0.2); // E4
         playTone(392.00, now + 0.3, 0.2); // G4
         playTone(523.25, now + 0.45, 0.4); // C5
+    }
+    playCountdownTick() {
+        if (!this.ctx || this.muted) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.frequency.setValueAtTime(440, now);
+        gain.gain.setValueAtTime(0.15, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
+        osc.start(now);
+        osc.stop(now + 0.08);
+    }
+    playMatchStart() {
+        if (!this.ctx || this.muted) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.frequency.setValueAtTime(880, now);
+        gain.gain.setValueAtTime(0.25, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+        osc.start(now);
+        osc.stop(now + 0.3);
     }
 }
 window.audioSystem = new AudioSystem();
@@ -561,6 +763,69 @@ function drawEntity(entity) {
         ctx.arc(0, 11, 4, 0, Math.PI * 2);
         ctx.fill();
         ctx.stroke();
+    }
+
+    // G2. Buff Auras (visual glow particles rotating around the torso)
+    if (entity.buffs) {
+        const timeFactor = Date.now() * 0.005;
+        
+        // Damage Buff Aura (Red/Pink glowing core ring + small stars)
+        if (entity.buffs.damage > 0) {
+            ctx.strokeStyle = 'rgba(255, 0, 127, 0.4)';
+            ctx.lineWidth = 2;
+            ctx.save();
+            ctx.shadowColor = '#ff007f';
+            ctx.shadowBlur = 6;
+            ctx.beginPath();
+            ctx.arc(0, 0, 15 + Math.sin(timeFactor) * 2, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.restore();
+            
+            // Draw rotating flame points
+            ctx.fillStyle = '#ff007f';
+            for (let i = 0; i < entity.buffs.damage; i++) {
+                const angle = timeFactor + (i * Math.PI * 2 / 5);
+                ctx.beginPath();
+                ctx.arc(Math.cos(angle) * 15, Math.sin(angle) * 15, 2, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        // Speed Buff Aura (Yellow speed halo + trails)
+        if (entity.buffs.speed > 0) {
+            ctx.strokeStyle = 'rgba(255, 234, 0, 0.4)';
+            ctx.lineWidth = 1.5;
+            ctx.save();
+            ctx.shadowColor = '#ffea00';
+            ctx.shadowBlur = 6;
+            ctx.beginPath();
+            ctx.arc(0, 0, 18 + Math.cos(timeFactor * 1.5) * 2, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.restore();
+
+            // Speed dashes
+            ctx.fillStyle = '#ffea00';
+            for (let i = 0; i < entity.buffs.speed; i++) {
+                const angle = -timeFactor * 1.2 + (i * Math.PI * 2 / 5);
+                ctx.beginPath();
+                ctx.arc(Math.cos(angle) * 18, Math.sin(angle) * 18, 1.8, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+    }
+
+    // G3. Invincibility Spawn Shield (Glowing cyan shield pulsing around character)
+    if (entity.invincible) {
+        const shieldPulse = 0.3 + Math.sin(Date.now() * 0.02) * 0.25;
+        ctx.strokeStyle = `rgba(0, 240, 255, ${shieldPulse})`;
+        ctx.lineWidth = 3;
+        ctx.save();
+        ctx.shadowColor = '#00f0ff';
+        ctx.shadowBlur = 10;
+        ctx.beginPath();
+        ctx.arc(0, 0, 22, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
     }
 
     ctx.restore(); // Restore translation

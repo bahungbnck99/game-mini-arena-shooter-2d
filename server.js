@@ -6,6 +6,7 @@ const path = require('path');
 const crypto = require('crypto');
 const { exec, spawn } = require('child_process');
 const roomManager = require('./server/RoomManager');
+const RankingsManager = require('./server/RankingsManager');
 const { bin } = require('cloudflared');
 
 const app = express();
@@ -20,6 +21,20 @@ app.use(express.static(path.join(__dirname, 'public')));
 // Global map to track active connections (wsId -> WebSocket connection)
 const clients = new Map();
 global.clients = clients;
+
+// Broadcast lobby rooms list updates to all connected menu clients
+function broadcastLobbyList() {
+    const list = roomManager.getLobbyRooms();
+    const packetStr = JSON.stringify({
+        type: 'lobby_list',
+        rooms: list
+    });
+    clients.forEach((ws) => {
+        if (ws.readyState === WebSocket.OPEN) {
+            ws.send(packetStr);
+        }
+    });
+}
 
 // Clean up empty rooms every 30 seconds
 setInterval(() => {
@@ -53,10 +68,20 @@ wss.on('connection', (ws) => {
                     break;
                 }
 
+                case 'get_rankings': {
+                    const topRankings = RankingsManager.getTopRankings();
+                    ws.send(JSON.stringify({
+                        type: 'rankings_data',
+                        rankings: topRankings
+                    }));
+                    break;
+                }
+
                 case 'create_room': {
                     const room = roomManager.createRoom(wsId, packet.config);
                     currentRoomCode = room.code;
                     room.addPlayer(wsId, packet.name, packet.loadout);
+                    broadcastLobbyList(); // Refresh room list for all menu clients
                     break;
                 }
 
@@ -94,6 +119,8 @@ wss.on('connection', (ws) => {
                             type: 'join_error',
                             message: 'Không thể vào phòng!'
                         }));
+                    } else {
+                        broadcastLobbyList(); // Refresh playersCount on room list
                     }
                     break;
                 }
@@ -122,7 +149,19 @@ wss.on('connection', (ws) => {
                     if (currentRoomCode) {
                         const room = roomManager.getRoom(currentRoomCode);
                         if (room && room.hostId === wsId) {
-                            room.startGame();
+                            room.startGame(packet.isAutoSpectate);
+                            broadcastLobbyList(); // Hide room from room list when started
+                        }
+                    }
+                    break;
+                }
+
+                case 'return_to_lobby': {
+                    if (currentRoomCode) {
+                        const room = roomManager.getRoom(currentRoomCode);
+                        if (room) {
+                            room.playerReturnToLobby(wsId);
+                            broadcastLobbyList(); // Put room back to room list if it transitions to lobby
                         }
                     }
                     break;
@@ -162,6 +201,7 @@ wss.on('connection', (ws) => {
                 }
             }
             currentRoomCode = null;
+            broadcastLobbyList(); // Refresh room list for all menu clients
         }
     };
 
